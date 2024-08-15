@@ -1,0 +1,32 @@
+name: Seedb CI
+
+on:
+    push:
+        branches: [main, development]
+          
+    pull_request: 
+        branches: [main]
+        types: closed
+
+jobs:
+
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+            
+            - name: Setup Go 1.22.5
+              uses: actions/setup-go@v5
+              with:
+                  go-version: '1.22.5'
+            
+            - name: Display go version
+              run: go version
+
+            - name: Install dependencies
+              run: go mod download && go mod verify
+
+            - name: Build
+              run: make build
+
