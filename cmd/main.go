@@ -1,60 +1,44 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/blackmamoth/seedb/cmd/cli"
+	"github.com/blackmamoth/seedb/cmd/tui"
+	"github.com/blackmamoth/seedb/pkg/common/styles"
+	"github.com/blackmamoth/seedb/pkg/seed"
+	"github.com/blackmamoth/seedb/pkg/types"
 )
 
 func main() {
-	app := &cli.App{
-		Name:      "Seedb",
-		Usage:     "Automatically seed database tables with initial/random data",
-		UsageText: "seedb seed --database [dbname] --user [username] --tables [table1,table2,table3]\n\nseedb rollback --steps 3 (default: 1)",
-		Version:   "v0.1.0",
-		Action: func(ctx *cli.Context) error {
-			return cli.ShowAppHelp(ctx)
-		},
-		EnableBashCompletion: true,
-		Commands: []*cli.Command{
-			{
-				Name:  "seed",
-				Usage: "Seed database tables with random data",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "database",
-						Usage:   "Name of the database in which the action needs to be performed",
-						Aliases: []string{"d"},
-					},
-					&cli.StringFlag{
-						Name:    "user",
-						Usage:   "Database user",
-						Aliases: []string{"u"},
-					},
-					&cli.StringSliceFlag{
-						Name:    "tables",
-						Usage:   "The operation will be performed on the selected database tables",
-						Aliases: []string{"t"},
-					},
-				},
-			},
-			{
-				Name:  "rollback",
-				Usage: "Roll back to previous commits",
-				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:    "steps",
-						Usage:   "Specify how many steps back the database should roll back",
-						Aliases: []string{"s"},
-						Value:   1,
-					},
-				},
-			},
-		},
+	var dbOptions *types.DBOptions
+	if len(os.Args) > 1 {
+		dbOptions = cli.Run()
+	} else {
+		dbOptions = tui.Run()
 	}
+	// TESTING
+	if dbOptions.Engine == "postgres" {
+		seeder := seed.NewPGSeeder(dbOptions)
+		err := seeder.TestConnection()
+		if err != nil {
+			fmt.Println(styles.ErrorStyle.Render(err.Error()))
+			os.Exit(1)
+		}
 
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		err = seeder.GenerateDatabaseTableSchema()
+
+		if err != nil {
+			fmt.Println(styles.ErrorStyle.Render(err.Error()))
+			os.Exit(1)
+		}
+
+		err = seeder.SelectTables()
+
+		if err != nil {
+			fmt.Println(styles.ErrorStyle.Render(err.Error()))
+			os.Exit(1)
+		}
 	}
 }
